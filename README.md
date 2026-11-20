@@ -19,4 +19,4 @@ Sin backend ni sincronización real (el estado nunca cambia desde la app), sin e
 $env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
 .\gradlew.bat testDebugUnitTest assembleDebug
 ```
-APK: `releases/CampusReport-v1.0-debug.apk`.
+APK: `releases/CampusReport-v1.1-debug.apk`.

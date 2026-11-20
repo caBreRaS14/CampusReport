@@ -1,10 +1,16 @@
 package co.fexe.campusreport
 
+import android.graphics.Color as AColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,6 +23,10 @@ import co.fexe.campusreport.ui.*
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(AColor.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(AColor.TRANSPARENT, AColor.TRANSPARENT)
+        )
         setContent { CampusTheme { Surface(color = MaterialTheme.colorScheme.background) { App() } } }
     }
 }
@@ -30,17 +40,18 @@ fun App(vm: ReporteViewModel = viewModel()) {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snack) },
         bottomBar = {
-            NavigationBar {
+            NavigationBar(containerColor = androidx.compose.ui.graphics.Color.White) {
                 NavigationBarItem(pestana == 0, { pestana = 0 }, { Icon(Icons.Default.Edit, null) }, label = { Text("Registrar") })
                 NavigationBarItem(pestana == 1, { pestana = 1 },
-                    { BadgedBox({ if (reportes.isNotEmpty()) Badge { Text("${reportes.size}") } }) { Icon(Icons.Default.List, null) } },
+                    { BadgedBox({ if (reportes.isNotEmpty()) Badge { Text("${reportes.size}") } }) { Icon(Icons.AutoMirrored.Filled.List, null) } },
                     label = { Text("Reportes") })
             }
         }
     ) { pad ->
-        Surface(Modifier.padding(pad), color = MaterialTheme.colorScheme.background) {
+        Surface(Modifier.padding(pad).consumeWindowInsets(pad), color = MaterialTheme.colorScheme.background) {
             if (pestana == 0) FormularioScreen(vm) { pestana = 1 } else ListadoScreen(reportes)
         }
     }
