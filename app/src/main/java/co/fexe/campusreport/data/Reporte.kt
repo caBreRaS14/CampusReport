@@ -23,6 +23,9 @@ interface ReporteDao {
     @Query("SELECT * FROM reportes ORDER BY fecha DESC, id DESC")
     fun todos(): Flow<List<Reporte>>
     @Insert suspend fun insertar(r: Reporte): Long
+    @Update suspend fun actualizar(r: Reporte)
+    @Query("DELETE FROM reportes WHERE id = :id") suspend fun eliminar(id: Long)
+    @Query("SELECT COUNT(*) FROM reportes") suspend fun contar(): Int
 }
 
 @Database(entities = [Reporte::class], version = 1, exportSchema = false)

@@ -11,8 +11,9 @@ android {
         applicationId = "co.fexe.campusreport"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        versionCode = 3
+        versionName = "1.2"
     }
     buildTypes { release { isMinifyEnabled = false } }
     compileOptions {
@@ -38,4 +39,11 @@ dependencies {
 }
 dependencies {
     testImplementation("junit:junit:4.13.2")
+}
+dependencies {
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.10.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

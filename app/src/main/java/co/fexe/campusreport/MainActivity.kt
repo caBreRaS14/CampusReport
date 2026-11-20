@@ -35,6 +35,11 @@ class MainActivity : ComponentActivity() {
 fun App(vm: ReporteViewModel = viewModel()) {
     var pestana by rememberSaveable { mutableIntStateOf(0) }
     val reportes by vm.reportes.collectAsStateWithLifecycle()
+    val visibles by vm.visibles.collectAsStateWithLifecycle()
+    val filtro by vm.filtro.collectAsStateWithLifecycle()
+    var detalleId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var modo by rememberSaveable { mutableIntStateOf(0) } // 0 detalle, 1 editar, 2 confirmar borrado
+    val actual = reportes.firstOrNull { it.id == detalleId }
     val snack = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { vm.mensaje.collect { snack.showSnackbar(it) } }
 
@@ -52,7 +57,16 @@ fun App(vm: ReporteViewModel = viewModel()) {
         }
     ) { pad ->
         Surface(Modifier.padding(pad).consumeWindowInsets(pad), color = MaterialTheme.colorScheme.background) {
-            if (pestana == 0) FormularioScreen(vm) { pestana = 1 } else ListadoScreen(reportes)
+            if (pestana == 0) FormularioScreen(vm) { pestana = 1 } else ListadoScreen(reportes, visibles, filtro, vm::setFiltro) { detalleId = it.id; modo = 0 }
+        }
+    }
+
+    actual?.let { r ->
+        val cerrar = { detalleId = null; modo = 0 }
+        when (modo) {
+            0 -> DetalleDialog(r, onEditar = { modo = 1 }, onEliminar = { modo = 2 }, onCerrar = cerrar)
+            1 -> EditarDialog(r, vm, onListo = cerrar, onCancelar = { modo = 0 })
+            else -> ConfirmarEliminarDialog(r, onConfirmar = { vm.borrar(r.id, cerrar) }, onCancelar = { modo = 0 })
         }
     }
 }

@@ -12,6 +12,13 @@ class ReporteViewModel(app: Application, private val saved: SavedStateHandle) : 
     val reportes: StateFlow<List<Reporte>> = dao.todos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Filtro del listado ("" = todas las categorías); se conserva al rotar.
+    val filtro = saved.getStateFlow("filtro", "")
+    fun setFiltro(c: String) { saved["filtro"] = c }
+    val visibles: StateFlow<List<Reporte>> = combine(reportes, filtro) { l, f ->
+        if (f.isEmpty()) l else l.filter { it.categoria == f }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // Borrador del formulario: sobrevive a rotación y a que el sistema cierre el proceso.
     val categoria = saved.getStateFlow("categoria", "")
     val descripcion = saved.getStateFlow("descripcion", "")
@@ -49,6 +56,26 @@ class ReporteViewModel(app: Application, private val saved: SavedStateHandle) : 
                 _mensaje.tryEmit("Reporte guardado en este dispositivo (pendiente de sincronización).")
                 onGuardado()
             } finally { _guardando.value = false }
+        }
+    }
+
+    /** Edita un reporte existente (conserva fecha y estado). Devuelve los errores de validación. */
+    fun editar(r: Reporte, cat: String, desc: String, ubi: String, onOk: () -> Unit): ErroresForm {
+        val e = validar(cat, desc, ubi)
+        if (e.hayErrores) return e
+        viewModelScope.launch {
+            dao.actualizar(r.copy(categoria = cat, descripcion = desc.trim(), ubicacion = ubi.trim()))
+            _mensaje.tryEmit("Cambios guardados en este dispositivo.")
+            onOk()
+        }
+        return e
+    }
+
+    fun borrar(id: Long, onOk: () -> Unit) {
+        viewModelScope.launch {
+            dao.eliminar(id)
+            _mensaje.tryEmit("Reporte eliminado de este dispositivo.")
+            onOk()
         }
     }
 }
