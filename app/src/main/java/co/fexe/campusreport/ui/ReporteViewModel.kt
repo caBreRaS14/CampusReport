@@ -22,7 +22,7 @@ class ReporteViewModel(app: Application, private val saved: SavedStateHandle) : 
     // Borrador del formulario: sobrevive a rotación y a que el sistema cierre el proceso.
     val categoria = saved.getStateFlow("categoria", "")
     val descripcion = saved.getStateFlow("descripcion", "")
-    val ubicacion = saved.getStateFlow("ubicacion", "")
+    val ubicacion = saved.getStateFlow("ubicacion", Ubicacion().codigo()) // ver Ubicacion.codigo()
 
     private val _errores = MutableStateFlow(ErroresForm())
     val errores: StateFlow<ErroresForm> = _errores
@@ -35,12 +35,13 @@ class ReporteViewModel(app: Application, private val saved: SavedStateHandle) : 
 
     fun setCategoria(v: String) { saved["categoria"] = v; _errores.update { it.copy(categoria = null) } }
     fun setDescripcion(v: String) { saved["descripcion"] = v; _errores.update { it.copy(descripcion = null) } }
-    fun setUbicacion(v: String) { saved["ubicacion"] = v; _errores.update { it.copy(ubicacion = null) } }
+    fun setUbicacion(u: Ubicacion) { saved["ubicacion"] = u.codigo(); _errores.update { it.copy(ubicacion = null) } }
 
     /** Ignora pulsaciones mientras haya un guardado en curso (una intención = un registro). */
     fun guardar(onGuardado: () -> Unit) {
         if (_guardando.value) return
-        val e = validar(categoria.value, descripcion.value, ubicacion.value)
+        val ub = Ubicacion.desdeCodigo(ubicacion.value)
+        val e = validar(categoria.value, descripcion.value, ub)
         _errores.value = e
         if (e.hayErrores) { _mensaje.tryEmit("No se guardó: revisa los campos marcados."); return }
         _guardando.value = true
@@ -49,10 +50,10 @@ class ReporteViewModel(app: Application, private val saved: SavedStateHandle) : 
                 dao.insertar(Reporte(
                     categoria = categoria.value,
                     descripcion = descripcion.value.trim(),
-                    ubicacion = ubicacion.value.trim(),
+                    ubicacion = ub.texto(),
                     fecha = System.currentTimeMillis()
                 ))
-                saved["categoria"] = ""; saved["descripcion"] = ""; saved["ubicacion"] = ""
+                saved["categoria"] = ""; saved["descripcion"] = ""; saved["ubicacion"] = Ubicacion().codigo()
                 _mensaje.tryEmit("Reporte guardado en este dispositivo (pendiente de sincronización).")
                 onGuardado()
             } finally { _guardando.value = false }
@@ -60,11 +61,11 @@ class ReporteViewModel(app: Application, private val saved: SavedStateHandle) : 
     }
 
     /** Edita un reporte existente (conserva fecha y estado). Devuelve los errores de validación. */
-    fun editar(r: Reporte, cat: String, desc: String, ubi: String, onOk: () -> Unit): ErroresForm {
+    fun editar(r: Reporte, cat: String, desc: String, ubi: Ubicacion, onOk: () -> Unit): ErroresForm {
         val e = validar(cat, desc, ubi)
         if (e.hayErrores) return e
         viewModelScope.launch {
-            dao.actualizar(r.copy(categoria = cat, descripcion = desc.trim(), ubicacion = ubi.trim()))
+            dao.actualizar(r.copy(categoria = cat, descripcion = desc.trim(), ubicacion = ubi.texto()))
             _mensaje.tryEmit("Cambios guardados en este dispositivo.")
             onOk()
         }

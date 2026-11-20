@@ -68,8 +68,8 @@ fun Encabezado(titulo: String, subtitulo: String) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CamposReporte(
-    categoria: String, descripcion: String, ubicacion: String, err: ErroresForm,
-    onCategoria: (String) -> Unit, onDescripcion: (String) -> Unit, onUbicacion: (String) -> Unit
+    categoria: String, descripcion: String, ubicacion: Ubicacion, err: ErroresForm,
+    onCategoria: (String) -> Unit, onDescripcion: (String) -> Unit, onUbicacion: (Ubicacion) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Categoría *", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -103,15 +103,67 @@ fun CamposReporte(
             minLines = 3, modifier = Modifier.fillMaxWidth().testTag("campo_descripcion"), shape = MaterialTheme.shapes.medium,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
         )
-        OutlinedTextField(
-            value = ubicacion, onValueChange = onUbicacion,
-            label = { Text("Ubicación *") }, placeholder = { Text("Ej.: Bloque B, piso 2, salón 204") },
-            leadingIcon = { Icon(Icons.Default.Place, null) },
-            isError = err.ubicacion != null,
-            supportingText = { err.ubicacion?.let { Text(it) } },
-            singleLine = true, modifier = Modifier.fillMaxWidth().testTag("campo_ubicacion"), shape = MaterialTheme.shapes.medium,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
-        )
+        SelectorUbicacion(ubicacion, err.ubicacion, onUbicacion)
+    }
+}
+
+/** Ubicación por selección (sin texto libre salvo «Otro») para evitar errores de escritura. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SelectorUbicacion(u: Ubicacion, error: String?, onCambio: (Ubicacion) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Ubicación *", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Campus.LUGARES.forEach { l ->
+                FilterChip(
+                    modifier = Modifier.testTag("lugar_$l"),
+                    selected = u.lugar == l,
+                    onClick = { onCambio(if (u.lugar == l) u else Ubicacion(lugar = l, otro = u.otro)) },
+                    label = { Text(if (l == Campus.EDIFICIO) "Edificio / salón" else l) }
+                )
+            }
+        }
+        if (u.lugar == Campus.EDIFICIO) {
+            Text("Edificio", style = MaterialTheme.typography.labelLarge)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Campus.EDIFICIOS.forEach { e ->
+                    FilterChip(modifier = Modifier.testTag("edificio_$e"), selected = u.edificio == e,
+                        onClick = { onCambio(u.copy(edificio = e)) }, label = { Text("$e") })
+                }
+            }
+            Text("Piso", style = MaterialTheme.typography.labelLarge)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Campus.PISOS.forEach { p ->
+                    FilterChip(modifier = Modifier.testTag("piso_$p"), selected = u.piso == p,
+                        onClick = { onCambio(if (u.piso == p) u else u.copy(piso = p, salon = -1)) }, label = { Text("$p") })
+                }
+            }
+            if (u.piso in Campus.PISOS) {
+                Text("Salón (los salones se numeran por piso)", style = MaterialTheme.typography.labelLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Campus.salonesDe(u.piso).forEach { n ->
+                        FilterChip(modifier = Modifier.testTag("salon_$n"), selected = u.salon == n,
+                            onClick = { onCambio(u.copy(salon = n)) }, label = { Text("$n") })
+                    }
+                    FilterChip(modifier = Modifier.testTag("salon_0"), selected = u.salon == 0,
+                        onClick = { onCambio(u.copy(salon = 0)) }, label = { Text("Zona común") })
+                }
+            }
+        }
+        if (u.lugar == Campus.OTRO) {
+            OutlinedTextField(
+                value = u.otro, onValueChange = { onCambio(u.copy(otro = it)) },
+                label = { Text("¿Dónde? *") }, placeholder = { Text("Describe el lugar") },
+                leadingIcon = { Icon(Icons.Default.Place, null) },
+                isError = error != null, singleLine = true,
+                modifier = Modifier.fillMaxWidth().testTag("campo_ubicacion"), shape = MaterialTheme.shapes.medium,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+            )
+        }
+        if (u.lugar.isNotEmpty() && error == null) {
+            Text("Seleccionado: ${u.texto()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+        }
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
     }
 }
 
@@ -119,7 +171,8 @@ fun CamposReporte(
 fun FormularioScreen(vm: ReporteViewModel, onGuardado: () -> Unit) {
     val categoria by vm.categoria.collectAsState()
     val descripcion by vm.descripcion.collectAsState()
-    val ubicacion by vm.ubicacion.collectAsState()
+    val ubicacionCodigo by vm.ubicacion.collectAsState()
+    val ubicacion = Ubicacion.desdeCodigo(ubicacionCodigo)
     val err by vm.errores.collectAsState()
     val guardando by vm.guardando.collectAsState()
 
@@ -172,7 +225,7 @@ fun ListadoScreen(
             "Reportes",
             when {
                 todos.isEmpty() -> "Aún no hay novedades registradas"
-                filtro.isEmpty() -> "${todos.size} registrados en este dispositivo"
+                filtro.isEmpty() -> "${todos.size} " + (if (todos.size == 1) "registrado" else "registrados") + " en este dispositivo"
                 else -> "${visibles.size} de ${todos.size} · $filtro"
             }
         )
@@ -284,7 +337,8 @@ fun DetalleDialog(r: Reporte, onEditar: () -> Unit, onEliminar: () -> Unit, onCe
 fun EditarDialog(r: Reporte, vm: ReporteViewModel, onListo: () -> Unit, onCancelar: () -> Unit) {
     var cat by rememberSaveable(r.id) { mutableStateOf(r.categoria) }
     var desc by rememberSaveable(r.id) { mutableStateOf(r.descripcion) }
-    var ubi by rememberSaveable(r.id) { mutableStateOf(r.ubicacion) }
+    var ubiCodigo by rememberSaveable(r.id) { mutableStateOf(Ubicacion.desdeTexto(r.ubicacion).codigo()) }
+    val ubi = Ubicacion.desdeCodigo(ubiCodigo)
     var err by remember { mutableStateOf(ErroresForm()) }
     AlertDialog(
         onDismissRequest = onCancelar,
@@ -295,7 +349,7 @@ fun EditarDialog(r: Reporte, vm: ReporteViewModel, onListo: () -> Unit, onCancel
                     cat, desc, ubi, err,
                     { cat = it; err = err.copy(categoria = null) },
                     { desc = it; err = err.copy(descripcion = null) },
-                    { ubi = it; err = err.copy(ubicacion = null) }
+                    { ubiCodigo = it.codigo(); err = err.copy(ubicacion = null) }
                 )
             }
         },

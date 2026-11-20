@@ -46,19 +46,20 @@ class RoomYViewModelTest {
         val id = dao.insertar(nuevo())
         val vm = ReporteViewModel(ctx as Application, SavedStateHandle())
         val orig = nuevo().copy(id = id)
-        val e = vm.editar(orig, "Otro", "  Texto nuevo  ", "Piso 3") {}
+        val e = vm.editar(orig, "Otro", "  Texto nuevo  ", Ubicacion(Campus.EDIFICIO, 3, 2, 203)) {}
         assertFalse(e.hayErrores)
         Thread.sleep(500)
         val r = dao.todosSync().first()
         assertEquals("Otro", r.categoria); assertEquals("Texto nuevo", r.descripcion)
         assertEquals(1L, r.fecha); assertEquals(ESTADO_INICIAL, r.estado)
+        assertEquals("Edificio 3 · Piso 2 · Salón 203", r.ubicacion)
     }
 
     @Test fun editarConDatosInvalidosNoCambiaNada() = runBlocking<Unit> {
         val dao = AppDb.get(ctx).reporteDao()
         val id = dao.insertar(nuevo())
         val vm = ReporteViewModel(ctx as Application, SavedStateHandle())
-        val e = vm.editar(nuevo().copy(id = id), "Equipos", "   ", "") {}
+        val e = vm.editar(nuevo().copy(id = id), "Equipos", "   ", Ubicacion()) {}
         assertTrue(e.hayErrores)
         Thread.sleep(300)
         assertEquals("Proyector dañado", dao.todosSync().first().descripcion)
@@ -83,7 +84,7 @@ class RoomYViewModelTest {
     /** P7 en el ViewModel: varias pulsaciones seguidas = un solo registro. */
     @Test fun variasPulsacionesCreanUnSoloReporte() = runBlocking<Unit> {
         val vm = ReporteViewModel(ctx as Application, SavedStateHandle())
-        vm.setCategoria("Equipos"); vm.setDescripcion("Proyector"); vm.setUbicacion("Bloque A")
+        vm.setCategoria("Equipos"); vm.setDescripcion("Proyector"); vm.setUbicacion(Ubicacion(lugar = "Biblioteca"))
         repeat(5) { vm.guardar {} }
         esperar { AppDb.get(ctx).reporteDao().contar() >= 1 }
         Thread.sleep(800)
