@@ -1,0 +1,11 @@
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+captures/
+.idea/
+*.iml
+# Entrega: informe y capturas aparte; el APK se versiona
+entrega/
+!releases/*.apk
