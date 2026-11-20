@@ -3,13 +3,14 @@
 MVP Android (Kotlin, Jetpack Compose, Room, MVVM) para registrar novedades del campus (daños, luminarias, equipos, conectividad) y consultarlas en un listado. Taller final integrador — Computación móvil.
 
 ## Alcance
-- Formulario: categoría (Infraestructura / Equipos / Conectividad / Otro), descripción y ubicación elegida (v1.3): edificio → piso → salón (salones numerados por piso: piso 2 → 201–210), áreas del campus (Biblioteca, Cafetería…) u «Otro» con texto. La estructura del campus (6 edificios, 5 pisos, 10 salones/piso) es un supuesto; se ajusta en `data/Ubicacion.kt`.
+- Formulario: categoría (Infraestructura / Equipos / Conectividad / Otro), descripción y ubicación elegida (v1.4): edificio → piso → salón (salones numerados por piso: piso 2 → 201–210), áreas del campus (Biblioteca, Cafetería…) u «Otro» con texto. La estructura del campus (6 edificios, 5 pisos, 10 salones/piso) es un supuesto; se ajusta en `data/Ubicacion.kt`.
 - Validación: los tres campos son obligatorios; una descripción o ubicación de solo espacios no es válida. Mensaje por campo.
 - Guardado en Room (SQLite local) con confirmación (Snackbar) y paso al listado.
 - Listado con categoría, ubicación, descripción, fecha y estado.
 - Estado inicial: **«Pendiente de sincronización»**. Se eligió sobre «Pendiente de atención» porque el reporte solo está en el dispositivo y no se envía a nadie; así el estado no sugiere un envío que no existe.
 - Borrador del formulario en `SavedStateHandle`: se conserva al rotar y al volver de otra app (incluso si el sistema cierra el proceso).
-- Filtro por categoría, detalle de cada reporte, edición (conserva fecha y estado) y eliminación con confirmación (v1.3).
+- Estados: Pendiente de sincronización → Reportado → En atención → Resuelto, cambiados desde la pestaña Gestión (nota opcional); pestaña Historial con cada movimiento; filtros combinables por estado, categoría y lugar. Botón «Cargar 40 ejemplos» (datos de DEMOSTRACIÓN marcados «Ejemplo», no reales). Base de datos v2 con migración desde v1 (v1.4).
+- Filtro por categoría, detalle de cada reporte, edición (conserva fecha y estado) y eliminación con confirmación (v1.4).
 - Anti-duplicados: el botón se deshabilita y el ViewModel ignora pulsaciones mientras hay un guardado en curso.
 
 ## Limitaciones declaradas
@@ -21,4 +22,4 @@ $env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
 .\gradlew.bat testDebugUnitTest assembleDebug
 .\gradlew.bat connectedDebugAndroidTest   # celular conectado y desbloqueado; desinstala la app al terminar
 ```
-APK: `releases/CampusReport-v1.3-debug.apk`.
+APK: `releases/CampusReport-v1.4-debug.apk`.

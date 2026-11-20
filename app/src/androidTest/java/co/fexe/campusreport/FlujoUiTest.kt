@@ -90,14 +90,58 @@ class FlujoUiTest {
 
     @Test fun filtrarPorCategoria() {
         llenar("Equipos", "Proyector no enciende")
-        rule.onNodeWithText("Registrar").performClick()
+        rule.onNodeWithTag("tab_registrar").performClick()
         llenar("Conectividad", "Sin WiFi en biblioteca", area = "Biblioteca")
         rule.waitUntil(3000) { total() == 2 }
-        rule.onNodeWithTag("filtro_Conectividad").performClick()
+        rule.onNodeWithTag("filtro_categoria").performClick()
+        rule.onNodeWithTag("op_Conectividad").performClick()
         rule.waitUntil(3000) { rule.onAllNodesWithText("Proyector no enciende").fetchSemanticsNodes().isEmpty() }
         rule.onNodeWithText("Sin WiFi en biblioteca").assertIsDisplayed()
-        rule.onNodeWithTag("filtro_todas").performClick()
+        rule.onNodeWithTag("filtro_limpiar").performClick()
         rule.onNodeWithText("Proyector no enciende").assertIsDisplayed()
+    }
+
+    @Test fun filtrarPorEstadoYLimpiar() {
+        llenar("Equipos", "Proyector no enciende")
+        rule.onNodeWithTag("tab_registrar").performClick()
+        llenar("Conectividad", "Sin WiFi en biblioteca", area = "Biblioteca")
+        rule.waitUntil(3000) { total() == 2 }
+        rule.onNodeWithTag("filtro_estado").performClick()
+        rule.onNodeWithTag("op_Resuelto").performClick()
+        rule.waitUntil(3000) { rule.onAllNodesWithTag("tarjeta").fetchSemanticsNodes().isEmpty() }
+        rule.onNodeWithText("No hay resultados con estos filtros.").assertIsDisplayed()
+        rule.onNodeWithText("Limpiar filtros").performClick()
+        rule.waitUntil(3000) { rule.onAllNodesWithTag("tarjeta").fetchSemanticsNodes().size == 2 }
+    }
+
+    @Test fun cambiarEstadoEnGestionYVerloEnElHistorial() {
+        llenar("Equipos", "Proyector no enciende")
+        rule.waitUntil(3000) { total() == 1 }
+        rule.onNodeWithTag("tab_gestion").performClick()
+        // el aviso «Reporte guardado» tapa el botón unos segundos: se espera a que desaparezca
+        rule.waitUntil(10000) { rule.onAllNodesWithText("Reporte guardado", substring = true).fetchSemanticsNodes().isEmpty() }
+        rule.onNodeWithTag("cambiar_estado").performScrollTo().performClick()
+        rule.onNodeWithTag("guardar_estado").assertIsNotEnabled()          // sin elegir otro estado no se puede guardar
+        rule.onNodeWithTag("estado_En atención").performClick()
+        rule.onNodeWithTag("campo_nota").performTextInput("Técnico asignado")
+        rule.onNodeWithTag("guardar_estado").performClick()
+        rule.waitUntil(3000) { runBlocking { dao.todos().first().first().estado } == "En atención" }
+        rule.onNodeWithTag("tab_historial").performClick()
+        rule.waitUntil(3000) { rule.onAllNodesWithTag("evento").fetchSemanticsNodes().size == 2 }
+        rule.onNodeWithText("«Técnico asignado»").assertIsDisplayed()
+        // el filtro de estado del historial se aplica al estado nuevo del movimiento
+        rule.onNodeWithTag("filtro_estado").performClick()
+        rule.onNodeWithTag("op_En atención").performClick()
+        rule.waitUntil(3000) { rule.onAllNodesWithTag("evento").fetchSemanticsNodes().size == 1 }
+    }
+
+    @Test fun cargarEjemplosDesdeGestionYQuitarlos() {
+        rule.onNodeWithTag("tab_gestion").performClick()
+        rule.onNodeWithTag("cargar_ejemplos").performClick()
+        rule.waitUntil(5000) { total() == 40 }
+        rule.onNodeWithText("Hay 40 cargados.", substring = true).assertIsDisplayed()
+        rule.onNodeWithTag("quitar_ejemplos").performClick()
+        rule.waitUntil(5000) { total() == 0 }
     }
 
     @Test fun editarYEliminar() {

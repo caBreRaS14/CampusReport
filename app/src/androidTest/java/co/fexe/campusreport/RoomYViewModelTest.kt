@@ -91,6 +91,63 @@ class RoomYViewModelTest {
         assertEquals(1, AppDb.get(ctx).reporteDao().contar())
     }
 
+    @Test fun crearRegistraElEventoDeCreacion() = runBlocking<Unit> {
+        val dao = AppDb.get(ctx).reporteDao()
+        dao.crear(nuevo())
+        val ev = dao.eventos().first()
+        assertEquals(1, ev.size)
+        assertNull(ev[0].estadoAnterior); assertEquals(Estados.PENDIENTE, ev[0].estadoNuevo)
+    }
+
+    @Test fun cambiarEstadoDejaMovimientoEnElHistorial() = runBlocking<Unit> {
+        val dao = AppDb.get(ctx).reporteDao()
+        val id = dao.crear(nuevo())
+        val vm = ReporteViewModel(ctx as Application, SavedStateHandle())
+        vm.cambiarEstado(id, Estados.EN_ATENCION, "  Técnico asignado ")
+        esperar { dao.contarEventos() >= 2 }
+        assertEquals(Estados.EN_ATENCION, dao.porId(id)!!.estado)
+        val ultimo = dao.eventos().first().first()
+        assertEquals(Estados.PENDIENTE, ultimo.estadoAnterior)
+        assertEquals(Estados.EN_ATENCION, ultimo.estadoNuevo)
+        assertEquals("Técnico asignado", ultimo.nota)
+    }
+
+    @Test fun cambiarAlMismoEstadoNoCreaMovimiento() = runBlocking<Unit> {
+        val dao = AppDb.get(ctx).reporteDao()
+        val id = dao.crear(nuevo())
+        assertFalse(dao.cambiarEstado(id, Estados.PENDIENTE, "", 5L))
+        assertEquals(1, dao.contarEventos())
+    }
+
+    @Test fun eliminarUnReporteBorraSuHistorial() = runBlocking<Unit> {
+        val dao = AppDb.get(ctx).reporteDao()
+        val a = dao.crear(nuevo()); dao.crear(nuevo(c = "Otro"))
+        dao.cambiarEstado(a, Estados.RESUELTO, "", 5L)
+        dao.eliminar(a)
+        assertEquals(1, dao.contar()); assertEquals(1, dao.contarEventos())
+    }
+
+    @Test fun cargarEjemplosCreaReportesConHistorialCoherente() = runBlocking<Unit> {
+        val dao = AppDb.get(ctx).reporteDao()
+        dao.crear(nuevo())   // un reporte «real» que no debe tocarse
+        val vm = ReporteViewModel(ctx as Application, SavedStateHandle())
+        vm.cargarEjemplos()
+        esperar { dao.contarEjemplos() == Ejemplos.CANTIDAD }
+        assertEquals(Ejemplos.CANTIDAD, dao.contarEjemplos())
+        assertEquals(Ejemplos.CANTIDAD + 1, dao.contar())
+        val reportes = dao.todos().first(); val eventos = dao.eventos().first()
+        reportes.filter { it.ejemplo }.forEach { r ->
+            val propios = eventos.filter { it.reporteId == r.id }.sortedWith(compareBy({ it.fecha }, { it.id }))
+            assertEquals(r.estado, propios.last().estadoNuevo)
+        }
+        vm.cargarEjemplos()        // volver a cargar no duplica
+        esperar { false }
+        assertEquals(Ejemplos.CANTIDAD + 1, dao.contar())
+        vm.quitarEjemplos()
+        esperar { dao.contarEjemplos() == 0 }
+        assertEquals(1, dao.contar()); assertEquals(1, dao.contarEventos())
+    }
+
     private fun esperar(cond: suspend () -> Boolean) = runBlocking {
         val fin = System.currentTimeMillis() + 3000
         while (System.currentTimeMillis() < fin && !cond()) Thread.sleep(50)

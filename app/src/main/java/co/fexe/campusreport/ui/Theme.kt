@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import co.fexe.campusreport.data.Estados
 
 val Azul = Color(0xFF0F4C81)
 val AzulClaro = Color(0xFF2B7BC4)
@@ -44,3 +45,18 @@ fun iconoCategoria(c: String): ImageVector = when (c) {
 @Composable
 fun CampusTheme(content: @Composable () -> Unit) =
     MaterialTheme(colorScheme = Esquema, shapes = Formas, content = content)
+
+/** (color de fondo, color de texto) del estado. */
+fun colorEstado(e: String): Pair<Color, Color> = when (e) {
+    Estados.REPORTADO -> Color(0xFFDCEBFA) to Color(0xFF0B4A82)
+    Estados.EN_ATENCION -> Color(0xFFFFE5CC) to Color(0xFF8A3E00)
+    Estados.RESUELTO -> Color(0xFFD9F2E1) to Color(0xFF14602E)
+    else -> Color(0xFFFFF4D6) to Color(0xFF6B4E00)
+}
+
+fun iconoEstado(e: String): ImageVector = when (e) {
+    Estados.REPORTADO -> Icons.Default.Send
+    Estados.EN_ATENCION -> Icons.Default.Build
+    Estados.RESUELTO -> Icons.Default.CheckCircle
+    else -> Icons.Default.Schedule
+}
